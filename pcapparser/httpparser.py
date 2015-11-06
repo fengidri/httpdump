@@ -75,6 +75,11 @@ class HttpParser(object):
 
         self.msgs = []
 
+        for msg in tcp.msgs:
+            self.send(*msg)
+
+        self.finish()
+
     def send(self, http_type, data):
         if not self.inited:
             self._init(http_type, data)
@@ -321,20 +326,18 @@ class HttpParser(object):
         utils.print(tcp_msg)
 
         if level == OutputLevel.ONLY_URL:
-            i = 0
             for msg in self.msgs:
                 if msg[0] == 0:
-                    i += 1
                     reqhdr = msg[1]
-                    if i > 1:
-                        utils.print(' ' * len(tcp_msg))
 
                     utils.print(reqhdr.method + ' ' + reqhdr.URI())
                     utils.print('\n')
         else:
             utils.print('\n')
-            for msg in self.msgs:
+            for i, msg in enumerate(self.msgs):
                 if msg[0] == 0:
+                    if i != 0:
+                        utils.print('-' * 80)
                     reqhdr = msg[1]
                     utils.print(reqhdr.raw_data)
                     utils.print('\n')
@@ -344,21 +347,3 @@ class HttpParser(object):
                     utils.print(reshdr.raw_data)
                     utils.print('\n')
                     utils.print('\n')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

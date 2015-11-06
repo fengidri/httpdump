@@ -65,10 +65,12 @@ class TcpConnection(object):
         self.__class__.Index += 1
 
         self.is_http = None
-        self.http_parser = HttpParser(self)
+        #self.http_parser = HttpParser(self)
         self.on_packet(packet)
         self.con_tuple = (packet.source, packet.source_port,
                 packet.dest, packet.dest_port)
+
+        self.msgs = []
 
     def on_packet(self, packet):
         """
@@ -97,31 +99,13 @@ class TcpConnection(object):
             packets = confirm_stream.retrieve_packet(packet.ack_seq)
             if packets:
                 for packet in packets:
-                    self.http_parser.send(pac_type, packet.body)
+                    self.msgs.append((pac_type, packet.body))
+                   # self.http_parser.send()
         if packet.fin:
             send_stream.status = 1
 
     def closed(self):
         return self.up_stream.status == 1 and self.down_stream.status == 1
-
-    def finish(self):
-        self.http_parser.finish()
-        #value = self.processor.buf.getvalue()
-        #if not value:
-        #    return
-
-        #try:
-        #    config.out.write(
-
-        #    if config.get_config().level != OutputLevel.ONLY_URL:
-        #        config.out.write('\n')
-        #    else:
-        #        config.out.write('\t')
-
-
-        #    config.out.write(value)
-
-        #    config.out.flush()
 
 if __name__ == "__main__":
     pass

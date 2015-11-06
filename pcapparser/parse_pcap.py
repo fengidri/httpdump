@@ -9,9 +9,6 @@ from pcapparser.constant import FileFormat
 from pcapparser import config
 
 from pcapparser.utils import is_request
-from pcapparser.utils import six
-
-from pcapparser.config import OutputLevel
 
 from tcpconn  import TcpConnection
 
@@ -69,7 +66,6 @@ def parse_pcap_file(infile):
             conn_dict[key].on_packet(tcp_pac)
             # conn closed.
             if conn_dict[key].closed():
-        #        conn_dict[key].finish()
                 del conn_dict[key]
 
         # begin tcp connection.
@@ -81,11 +77,6 @@ def parse_pcap_file(infile):
             conn_dict[key] = TcpConnection(tcp_pac)
             conn_sorted.append(conn_dict[key])
 
-    # finish connection which not close yet
-    #for conn in conn_dict.values():
-    #    conn.finish()
-    for con in conn_sorted:
-        con.finish()
     return conn_sorted
 
 

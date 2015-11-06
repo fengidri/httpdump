@@ -5,6 +5,7 @@ import sys
 
 from pcapparser.parse_pcap import parse_pcap_file
 from pcapparser import config
+from pcapparser.httpparser import HttpType, HttpParser
 
 
 # when press Ctrl+C
@@ -19,7 +20,8 @@ def main():
     config.init()
 
     for tcpcon in parse_pcap_file(config.get_config().infile):
-        tcpcon.http_parser.print(config.get_config().level)
+        http = HttpParser(tcpcon)
+        http.print(config.get_config().level)
 
 
 if __name__ == "__main__":
