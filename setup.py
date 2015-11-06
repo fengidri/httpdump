@@ -7,7 +7,7 @@ with codecs.open('README.rst', encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='pcap-parser',
+    name='netdump',
     version='0.5.8',
     description='Parse pcap file with python',
     long_description=long_description,

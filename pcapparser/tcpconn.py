@@ -15,8 +15,8 @@ from pcapparser.utils import is_request
 
 class Stream(object):
     def __init__(self):
-        self.receive_buf = []
-        self.status = 0
+        self.receive_buf  = []
+        self.status       = 0
         self.last_ack_seq = 0
 
     def append_packet(self, packet):
@@ -65,7 +65,6 @@ class TcpConnection(object):
         self.__class__.Index += 1
 
         self.is_http = None
-        self.processor = HttpPrinter()
         self.http_parser = HttpParser(self)
         self.on_packet(packet)
         self.con_tuple = (packet.source, packet.source_port,
