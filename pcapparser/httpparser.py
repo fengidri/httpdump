@@ -56,72 +56,7 @@ class RequestMessage(object):
         self.expect_header = None
         self.filtered = False
 
-
-class HttpParser(object):
-    """parse http req & resp"""
-
-    def __init__(self, tcp):
-        """
-        :type processor: HttpDataProcessor
-        """
-        self.cur_type = None
-        self.inited = False
-        self.is_http = False
-        self.worker = None
-        self.tcp = tcp
-
-        self.cur_data = None
-        self.message = RequestMessage()
-
-        self.msgs = []
-
-        for msg in tcp.msgs:
-            self.send(*msg)
-
-        self.finish()
-
-    def send(self, http_type, data):
-        if not self.inited:
-            self._init(http_type, data)
-            self.inited = True
-
-        if not self.is_http:
-            return
-
-        # still current http request/response
-        if self.cur_type == http_type:
-            self.cur_data.append(data)
-            return
-
-        if self.cur_data is not None:
-            reader = DataReader(self.cur_data)
-            if self.cur_type == HttpType.REQUEST:
-                self.read_request(reader, self.message)
-            elif self.cur_type == HttpType.RESPONSE:
-                self.read_response(reader, self.message)
-
-        self.cur_type = http_type
-
-        # new http request/response
-        self.cur_data = []
-        self.cur_data.append(data)
-
-    def _init(self, http_type, data):
-        if not utils.is_request(data) or http_type != HttpType.REQUEST:
-            # not a http request
-            self.is_http = False
-        else:
-            self.is_http = True
-
-    def finish(self):
-        # if still have unprocessed data
-        if self.cur_data:
-            reader = DataReader(self.cur_data)
-            if self.cur_type == HttpType.REQUEST:
-                self.read_request(reader, self.message)
-            elif self.cur_type == HttpType.RESPONSE:
-                self.read_response(reader, self.message)
-
+class httpparser(object)
     def read_headers(self, reader, lines):
         """
         :type reader: DataReader
@@ -314,6 +249,74 @@ class HttpParser(object):
 
         if not message.filtered:
             self.msgs.append((1, resp_header, content))
+
+
+class HttpParser(httpparser):
+    """parse http req & resp"""
+
+    def __init__(self, tcp):
+        """
+        :type processor: HttpDataProcessor
+        """
+        self.cur_type = None
+        self.inited = False
+        self.is_http = False
+        self.worker = None
+        self.tcp = tcp
+
+        self.cur_data = None
+        self.message = RequestMessage()
+
+        self.msgs = []
+
+        for msg in tcp.msgs:
+            self.send(*msg)
+
+        self.finish()
+
+    def _init(self, http_type, data):
+        if not utils.is_request(data) or http_type != HttpType.REQUEST:
+            # not a http request
+            self.is_http = False
+        else:
+            self.is_http = True
+
+
+    def send(self, http_type, data):
+        if not self.inited:
+            self._init(http_type, data)
+            self.inited = True
+
+        if not self.is_http:
+            return
+
+        # still current http request/response
+        if self.cur_type == http_type:
+            self.cur_data.append(data)
+            return
+
+        if self.cur_data is not None:
+            reader = DataReader(self.cur_data)
+            if self.cur_type == HttpType.REQUEST:
+                self.read_request(reader, self.message)
+            elif self.cur_type == HttpType.RESPONSE:
+                self.read_response(reader, self.message)
+
+        self.cur_type = http_type
+
+        # new http request/response
+        self.cur_data = []
+        self.cur_data.append(data)
+
+    def finish(self):
+        # if still have unprocessed data
+        if self.cur_data:
+            reader = DataReader(self.cur_data)
+            if self.cur_type == HttpType.REQUEST:
+                self.read_request(reader, self.message)
+            elif self.cur_type == HttpType.RESPONSE:
+                self.read_response(reader, self.message)
+
 
     def print(self, level):
         if not self.msgs:
