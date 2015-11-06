@@ -19,7 +19,11 @@ signal.signal(signal.SIGINT, signal_handler)
 def main():
     config.init()
 
+    filter = config.get_filter()
     for tcpcon in parse_pcap_file(config.get_config().infile):
+        if filter.index != None and tcpcon.index not in filter.index:
+            continue
+
         http = HttpParser(tcpcon)
         http.print(config.get_config().level)
 

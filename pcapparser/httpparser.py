@@ -56,7 +56,7 @@ class RequestMessage(object):
         self.expect_header = None
         self.filtered = False
 
-class httpparser(object)
+class httpparser(object):
     def read_headers(self, reader, lines):
         """
         :type reader: DataReader

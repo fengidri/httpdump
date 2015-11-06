@@ -99,7 +99,16 @@ def init():
     _filter.port = args.port
     _filter.domain = args.domain
     _filter.uri_pattern = args.uri
-    #_filter.index = args.index
+    if args.index:
+        _filter.index = []
+        for i in args.index.split(','):
+            if i.find('-') > -1:
+                s, e = i.split('-')
+                _filter.index += range(int(s), int(e) + 1)
+            else:
+                _filter.index.append(int(i))
+    else:
+        _filter.index = None
 
     # deal with configs
     parse_config = _parse_config
