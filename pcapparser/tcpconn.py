@@ -4,14 +4,8 @@
 #    email     :   fengidri@yeah.net
 #    version   :   1.0.1
 from __future__ import unicode_literals, print_function, division
-from collections import OrderedDict
-import struct
-import sys
 
 from pcapparser.packet_parser import TcpPack
-from pcapparser.printer import HttpPrinter
-from pcapparser.httpparser import HttpType, HttpParser
-from pcapparser.utils import is_request
 
 class Stream(object):
     def __init__(self):
@@ -64,8 +58,6 @@ class TcpConnection(object):
         self.index = self.__class__.Index
         self.__class__.Index += 1
 
-        self.is_http = None
-        #self.http_parser = HttpParser(self)
         self.on_packet(packet)
         self.con_tuple = (packet.source, packet.source_port,
                 packet.dest, packet.dest_port)
@@ -76,20 +68,14 @@ class TcpConnection(object):
         """
         :type packet: TcpPack
         """
-        if self.is_http is None and packet.body:
-            self.is_http = is_request(packet.body)
-
-        if self.is_http == False:
-            return
-
         if packet.source_key() == self.client_key:
             send_stream = self.up_stream
             confirm_stream = self.down_stream
-            pac_type = HttpType.RESPONSE
+            pac_type = 1
         else:
             send_stream = self.down_stream
             confirm_stream = self.up_stream
-            pac_type = HttpType.REQUEST
+            pac_type = 0
 
         if len(packet.body) > 0:
             send_stream.append_packet(packet)

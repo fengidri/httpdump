@@ -8,12 +8,20 @@ from pcapparser.reader import DataReader
 from pcapparser import config
 
 from pcapparser.config import OutputLevel
+from io import StringIO
 
 
 __author__ = 'dongliu'
 
+class HttpStream(object):
+    def __init__(self):
+        self.buf = StringIO()
 
-class HttpRequestHeader(object):
+    def write(self, msg):
+        self.buf.write(msg)
+        self.handle()
+
+class HttpRequest(HttpStream):
     def __init__(self):
         self.content_len = 0
         self.method = b''
@@ -35,7 +43,7 @@ class HttpRequestHeader(object):
             return b'http://' + self.host + self.uri
 
 
-class HttpResponseHeader(object):
+class HttpResponse(HttpStream):
     def __init__(self):
         self.content_len = 0
         self.status_line = None
@@ -252,71 +260,47 @@ class httpparser(object):
 
 
 class HttpParser(httpparser):
+    ERRNO_NUM     = 0
+    ERRNO_NOTHTTP = 1
     """parse http req & resp"""
-
     def __init__(self, tcp):
         """
         :type processor: HttpDataProcessor
         """
-        self.cur_type = None
-        self.inited = False
-        self.is_http = False
-        self.worker = None
         self.tcp = tcp
+        self.errno = 0
 
-        self.cur_data = None
-        self.message = RequestMessage()
+        self.stream =  [StringIO(), StringIO()]
+        self.handles = [None, None]
 
         self.msgs = []
 
         for msg in tcp.msgs:
-            self.send(*msg)
+            err = self.read_msg(*msg)
+            if not err:
+                break
 
-        self.finish()
+    def read_msg(self, http_type, data):
+        stream = self.stream[http_type]
+        stream.seek(0, 2)
+        stream.write(data)
 
-    def _init(self, http_type, data):
-        if not utils.is_request(data) or http_type != HttpType.REQUEST:
-            # not a http request
-            self.is_http = False
-        else:
-            self.is_http = True
+        rr = self.msgs[http_type]
+        if None == rr:
+            stream.seek(0)
+            line = stream.readline() # maybe too big
 
+            if line[-8:-3].lower() == 'http/':
+                rr = HttpRequest()
+            elif line[0:5].lower() == 'http/'
+                rr = HttpResponse()
+            else:
+                return self.ERRNO_NOTHTTP
 
-    def send(self, http_type, data):
-        if not self.inited:
-            self._init(http_type, data)
-            self.inited = True
+            self.msgs.append(rr)
+            self.handles[http_type] = rr
 
-        if not self.is_http:
-            return
-
-        # still current http request/response
-        if self.cur_type == http_type:
-            self.cur_data.append(data)
-            return
-
-        if self.cur_data is not None:
-            reader = DataReader(self.cur_data)
-            if self.cur_type == HttpType.REQUEST:
-                self.read_request(reader, self.message)
-            elif self.cur_type == HttpType.RESPONSE:
-                self.read_response(reader, self.message)
-
-        self.cur_type = http_type
-
-        # new http request/response
-        self.cur_data = []
-        self.cur_data.append(data)
-
-    def finish(self):
-        # if still have unprocessed data
-        if self.cur_data:
-            reader = DataReader(self.cur_data)
-            if self.cur_type == HttpType.REQUEST:
-                self.read_request(reader, self.message)
-            elif self.cur_type == HttpType.RESPONSE:
-                self.read_response(reader, self.message)
-
+        return rr.read(data)
 
     def print(self, level):
         if not self.msgs:
