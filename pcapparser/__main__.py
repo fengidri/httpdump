@@ -24,6 +24,9 @@ def main():
         if filter.index != None and tcpcon.index not in filter.index:
             continue
 
+        if not (filter.by_con_tuple(tcpcon.con_tuple)):
+            continue
+
         http = HttpParser(tcpcon)
         http.print(config.get_config().level)
 

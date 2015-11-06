@@ -54,6 +54,10 @@ class Filter(object):
     def by_uri(self, uri):
         return not self.uri_pattern or self.uri_pattern in uri
 
+    def by_con_tuple(self, con_tuple):
+        return True
+        pass #TODO
+
     #def by_index(self, index):
 
 

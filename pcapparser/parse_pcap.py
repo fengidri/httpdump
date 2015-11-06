@@ -6,7 +6,6 @@ import sys
 from pcapparser import packet_parser
 from pcapparser import pcap, pcapng, utils
 from pcapparser.constant import FileFormat
-from pcapparser import config
 
 from pcapparser.utils import is_request
 
@@ -50,16 +49,8 @@ def parse_pcap_file(infile):
         print("unknown file format.", file=sys.stderr)
         sys.exit(1)
 
-    _filter = config.get_filter()
-
     conn_sorted = []
     for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
-        # filter
-        if not (_filter.by_ip(tcp_pac.source) or _filter.by_ip(tcp_pac.dest)):
-            continue
-        if not (_filter.by_port(tcp_pac.source_port) or _filter.by_port(tcp_pac.dest_port)):
-            continue
-
         key = tcp_pac.gen_key()
         # we already have this conn
         if key in conn_dict:
@@ -72,6 +63,7 @@ def parse_pcap_file(infile):
         elif tcp_pac.syn and not tcp_pac.ack:
             conn_dict[key] = TcpConnection(tcp_pac)
             conn_sorted.append(conn_dict[key])
+
         elif utils.is_request(tcp_pac.body):
             # tcp init before capture, we start from a possible http request header.
             conn_dict[key] = TcpConnection(tcp_pac)
