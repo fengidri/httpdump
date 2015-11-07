@@ -94,7 +94,7 @@ def parse_http_header(header):
     if idx < 0:
         return None, None
     else:
-        return header[0:idx].strip(), header[idx + 1:].strip()
+        return header[0:idx].strip().lower(), header[idx + 1:].strip()
 
 
 _methods = {b'GET', b'POST', b'PUT', b'DELETE', b'HEAD', b'TRACE', b'OPTIONS', b'PATCH'}
