@@ -51,6 +51,9 @@ class TcpConnection(object):
         """
         :type packet: TcpPack
         """
+        self.packets = []
+
+
         self.up_stream = Stream()
         self.down_stream = Stream()
         self.client_key = packet.source_key()
@@ -68,6 +71,8 @@ class TcpConnection(object):
         """
         :type packet: TcpPack
         """
+        self.packets.append(packet)
+
         if packet.source_key() == self.client_key:
             send_stream = self.up_stream
             confirm_stream = self.down_stream
@@ -79,14 +84,13 @@ class TcpConnection(object):
 
         if len(packet.body) > 0:
             send_stream.append_packet(packet)
-        if packet.syn:
-            pass
+
         if packet.ack:
             packets = confirm_stream.retrieve_packet(packet.ack_seq)
             if packets:
                 for packet in packets:
                     self.msgs.append((pac_type, packet.body))
-                   # self.http_parser.send()
+
         if packet.fin:
             send_stream.status = 1
 
