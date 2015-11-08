@@ -37,9 +37,6 @@ def parse_pcap_file(infile):
     """
     :type infile:file
     """
-
-    conn_dict = OrderedDict()
-
     file_format, head = get_file_format(infile)
     if file_format == FileFormat.PCAP:
         pcap_file = pcap.PcapFile(infile, head).read_packet
@@ -48,7 +45,13 @@ def parse_pcap_file(infile):
     else:
         print("unknown file format.", file=sys.stderr)
         sys.exit(1)
+    return pcap_file
 
+
+def get_tcpconn(infile):
+    pcap_file = parse_pcap_file(infile)
+
+    conn_dict = OrderedDict()
     conn_sorted = []
     for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
         key = tcp_pac.gen_key()

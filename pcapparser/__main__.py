@@ -3,7 +3,7 @@ from __future__ import unicode_literals, print_function, division
 import signal
 import sys
 
-from pcapparser.parse_pcap import parse_pcap_file
+from pcapparser.parse_pcap import get_tcpconn
 from pcapparser import config
 from pcapparser.httpparser import HttpType, HttpParser
 
@@ -20,7 +20,7 @@ def main():
     config.init()
 
     filter = config.get_filter()
-    for tcpcon in parse_pcap_file(config.get_config().infile):
+    for tcpcon in get_tcpconn(config.get_config().infile):
         if filter.index != None and tcpcon.index not in filter.index:
             continue
 
