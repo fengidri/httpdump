@@ -221,6 +221,17 @@ class HttpParser(object):
             self.handles[http_type] = None
 
     def print(self, level):
+        def printheaders(headers):
+            l = 0
+            for k in headers.keys():
+                if l < len(k):
+                    l = len(k)
+            for k, v in headers.items():
+                utils.print(k.ljust(l))
+                utils.print(': ')
+                utils.print(v)
+                utils.print('\n')
+
         if not self.msgs:
             return
 
@@ -238,18 +249,12 @@ class HttpParser(object):
                     utils.print('\n')
         else:
             for i, msg in enumerate(self.msgs):
-                if msg.is_request:
-                    if i != 0:
+                if msg.is_request and i != 0:
+                        utils.print('\033[31;2m')
                         utils.print('-' * 80)
+                        utils.print('\033[0m')
                         utils.print('\n')
 
-                    for line in msg.raw_headers:
-                        utils.print(line)
-                    utils.print('\n')
-                    utils.print('\n')
-                else:
-                    for line in msg.raw_headers:
-                        utils.print(line)
-                    utils.print('\n')
-                    utils.print('\n')
+                utils.print(''.join(msg.raw_headers))
+                utils.print('\n')
 
