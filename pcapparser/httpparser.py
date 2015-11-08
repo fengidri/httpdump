@@ -257,4 +257,6 @@ class HttpParser(object):
 
                 utils.print(''.join(msg.raw_headers))
                 utils.print('\n')
+                if level == OutputLevel.ALL_BODY:
+                    utils.print(msg.body.getvalue())
 
