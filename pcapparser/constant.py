@@ -25,6 +25,7 @@ class NetworkProtocol(object):
     PPP_IP = 33
     # PPPOE Session 0x8864
     PPPOE_SESSION = 34916
+    ARP = 0x0806
 
 
 class TransferProtocol(object):

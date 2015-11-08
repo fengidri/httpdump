@@ -74,5 +74,9 @@ def get_tcpconn(infile):
 
     return conn_sorted
 
+def get_infos(infile):
+    pcap_file = parse_pcap_file(infile)
+    return packet_parser.info(pcap_file)
+
 
 

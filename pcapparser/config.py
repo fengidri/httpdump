@@ -88,6 +88,7 @@ def init():
     parser.add_argument("-d", "--domain", help="filter http data by request domain")
     parser.add_argument("-u", "--uri", help="filter http data by request uri pattern")
     parser.add_argument("-I", "--index", help="select the index")
+    parser.add_argument("-t", "--target", default = "http")
 
     args = parser.parse_args()
 
@@ -122,6 +123,8 @@ def init():
         parse_config.encoding = args.encoding
     parse_config.pretty = args.beauty
     parse_config.group = args.group
+
+    parse_config.args = args
 
     if args.output:
         output_file = open(args.output, "w+")

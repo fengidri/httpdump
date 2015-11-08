@@ -169,3 +169,63 @@ def read_tcp_packet(read_packet):
         elif transport_protocol == TransferProtocol.UDP:
             # source_port, dest_port, udp_body = parse_udp_packet(ip_body)
             continue
+
+def info(read_packet):
+    packet_total = 0
+    packet_tcp   = 0
+    packet_udp   = 0
+    packet_arp   = 0
+    packet_icmp  = 0
+
+    for link_type, micro_second, link_packet in read_packet():
+        packet_total += 1
+
+        parse_link_layer = get_link_layer_parser(link_type)
+        if parse_link_layer is None:
+            # skip unknown link layer packet
+            continue
+
+        network_protocol, link_layer_body = parse_link_layer(link_packet)
+        transport_protocol, source, dest, ip_body = parse_ip_packet(network_protocol, link_layer_body)
+
+        if transport_protocol is None:
+            continue
+
+        # tcp
+        if transport_protocol == TransferProtocol.TCP:
+            packet_tcp += 1
+        elif transport_protocol == TransferProtocol.UDP:
+            packet_udp += 1
+        elif transport_protocol == TransferProtocol.UDP:
+            packet_udp += 1
+        elif transport_protocol == TransferProtocol.ICMP:
+            packet_icmp += 1
+        elif transport_protocol == TransferProtocol.ICMP:
+            packet_icmp += 1
+    msg = """Packet:
+Total: %s
+TCP  : %s
+UDP  : %s
+ICMP : %s
+"""
+    return  msg % (packet_total, packet_tcp, packet_udp, packet_icmp)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
