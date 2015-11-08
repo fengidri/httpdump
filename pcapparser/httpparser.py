@@ -8,50 +8,31 @@ from pcapparser.reader import DataReader
 from pcapparser import config
 
 from pcapparser.config import OutputLevel
-from StringIO import StringIO
 
-class Stream(StringIO):
-    def readline(self, length=None):
-        r"""Read one entire line from the file.
-
-        A trailing newline character is kept in the string (but may be absent
-        when a file ends with an incomplete line). If the size argument is
-        present and non-negative, it is a maximum byte count (including the
-        trailing newline) and an incomplete line may be returned.
-
-        An empty string is returned only when EOF is encountered immediately.
-
-        Note: Unlike stdio's fgets(), the returned string contains null
-        characters ('\0') if they occurred in the input.
-        """
-        _complain_ifclosed(self.closed)
-        if self.buflist:
-            self.buf += ''.join(self.buflist)
-            self.buflist = []
-        i = self.buf.find('\n', self.pos)
-        if i < 0:
-            return None # rewrite the code of StringIO
-        else:
-            newpos = i+1
-        if length is not None and length >= 0:
-            if self.pos + length < newpos:
-                newpos = self.pos + length
-        r = self.buf[self.pos:newpos]
-        self.pos = newpos
-        return r
+from .StreamBuf import Stream
 
 
 class HttpStream(object):
     def __init__(self):
         self.handle = None
         self.headers = {}
+        self.raw_headers = []
         self.body = Stream()
         self._chunked = False
         self._chunked_len = -2# this is special
-        self._len = -1
+        self._chunked_stop = False
+        self._len = 0
+
+        self.is_request = False
 
     def read(self, msg):
-        return self.handle(msg)
+        while True:
+            handle = self.handle
+            res = self.handle(msg)
+            if handle == self.handle:
+                break
+
+        return res
 
     def headers_handle(self, msg):
         while True:
@@ -59,13 +40,14 @@ class HttpStream(object):
             if None == line:
                 return
 
-            line = line.strip()
-            if '' == line:
+            if '\r\n' == line:
                 self.handle = self.body_handle
                 break
 
             self.raw_headers.append(line)
+
             key, value = utils.parse_http_header(line)
+            self.headers[key] = value
             if key == None:
                 continue
 
@@ -101,14 +83,19 @@ class HttpStream(object):
             self._chunked_len -= len(t)
 
         if self._chunked_len == -2:
+            if self._chunked_stop:
+                return 0
+
             line = msg.readline()
-            chunk_size_end = cline.find(b';')
+            chunk_size_end = line.find(b';')
             if chunk_size_end < 0:
-                chunk_size_end = len(cline)
+                chunk_size_end = len(line)
                 # skip chunk extension
-            chunk_size_str = cline[0:chunk_size_end]
+            chunk_size_str = line[0:chunk_size_end]
             if chunk_size_str[0] == b'0':
-                return 0 # over
+                self._chunked_stop = True
+                self._chunked_len = 0
+                return self.read_chunked_body(msg)
 
             try:
                 chunk_len = int(chunk_size_str, 16)
@@ -118,12 +105,14 @@ class HttpStream(object):
                 pass
 
 
+
 class HttpRequest(HttpStream):
     def __init__(self):
+        HttpStream.__init__(self)
         self.reqline = {}
-        self.raw_headers = []
 
         self.handle = self.reqline_handle
+        self.is_request = True
 
 
     def reqline_handle(self, msg):
@@ -144,18 +133,25 @@ class HttpRequest(HttpStream):
 
 
     def URI(self):
-        if self.uri.startswith(b'http://') or self.uri.startswith(b'https://'):
+        uri = self.reqline["uri"]
+        if uri.startswith(b'http://') or uri.startswith(b'https://'):
             return self.uri
         else:
-            return b'http://' + self.host + self.uri
+            host = self.headers.get("host")
+            if host:
+                return b'http://' + host + uri
+            else:
+                return uri
 
 
 class HttpResponse(HttpStream):
     def __init__(self):
+        HttpStream.__init__(self)
         self.resline = {}
-        self.content_len = 0
 
-    def reqline_handle(self, msg):
+        self.handle = self.resline_handle
+
+    def resline_handle(self, msg):
         line = msg.readline()
         if not line:
             return
@@ -165,11 +161,12 @@ class HttpResponse(HttpStream):
             return -1 # NOT HTTP
 
         self.raw_headers.append(line)
-        self.reqline['status'] = items[1]
+        self.resline['status'] = items[1]
         self.handle = self.headers_handle
 
 
-class HttpParser(httpparser):
+
+class HttpParser(object):
     ERRNO_NUM     = 0
     ERRNO_NOTHTTP = 1
     """parse http req & resp"""
@@ -180,7 +177,7 @@ class HttpParser(httpparser):
         self.tcp = tcp
         self.errno = 0
 
-        self.stream =  [String(), String()]
+        self.stream =  [Stream(), Stream()]
         self.handles = [None, None]
 
         self.msgs = []
@@ -192,32 +189,36 @@ class HttpParser(httpparser):
 
     def read_msg(self, http_type, data):
         stream = self.stream[http_type]
-        rr = self.handles[http_type]
 
+        pos = stream.tell()
         stream.seek(0, 2)
         stream.write(data)
+        stream.seek(pos)
 
-        if None == rr:
-            stream.seek(0)
-            line = stream.readline() # TODO maybe too big
-            if not line:
-                return
+        while True:
+            rr = self.handles[http_type]
+            if None == rr:
+                pos = stream.tell()
+                line = stream.readline() # TODO maybe too big
+                if not line:
+                    return
 
-            if line[-8:-3].lower() == 'http/':
-                rr = HttpRequest()
-            elif line[0:5].lower() == 'http/'
-                rr = HttpResponse()
-            else:
-                return self.ERRNO_NOTHTTP
+                if line[-10:-5].lower() == 'http/': # the line ends with \r\n
+                    rr = HttpRequest()
+                elif line[0:5].lower() == 'http/':
+                    rr = HttpResponse()
+                else:
+                    return self.ERRNO_NOTHTTP
 
-            self.msgs.append(rr)
-            self.handles[http_type] = rr
+                self.msgs.append(rr)
+                self.handles[http_type] = rr
+                stream.seek(pos)
 
-        stream.seek(0)
-        res = rr.read(stream)
-        if 0 == res:
+            res = rr.read(stream)
+            if 0 != res:
+                return res
+
             self.handles[http_type] = None
-        return res
 
     def print(self, level):
         if not self.msgs:
@@ -232,23 +233,23 @@ class HttpParser(httpparser):
 
         if level == OutputLevel.ONLY_URL:
             for msg in self.msgs:
-                if msg[0] == 0:
-                    reqhdr = msg[1]
-
-                    utils.print('  ' + reqhdr.method + ' ' + reqhdr.URI())
+                if msg.is_request:
+                    utils.print(msg.reqline["method"] + ' ' + msg.URI())
                     utils.print('\n')
         else:
             for i, msg in enumerate(self.msgs):
-                if msg[0] == 0:
+                if msg.is_request:
                     if i != 0:
                         utils.print('-' * 80)
-                    reqhdr = msg[1]
-                    utils.print(reqhdr.raw_data)
+                        utils.print('\n')
+
+                    for line in msg.raw_headers:
+                        utils.print(line)
                     utils.print('\n')
                     utils.print('\n')
                 else:
-                    reshdr = msg[1]
-                    utils.print(reshdr.raw_data)
+                    for line in msg.raw_headers:
+                        utils.print(line)
                     utils.print('\n')
                     utils.print('\n')
 
