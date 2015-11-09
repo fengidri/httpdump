@@ -134,7 +134,7 @@ class HttpRequest(HttpStream):
     def URI(self):
         uri = self.reqline["uri"]
         if uri.startswith(b'http://') or uri.startswith(b'https://'):
-            return self.uri
+            return uri
         else:
             host = self.headers.get("host")
             if host:

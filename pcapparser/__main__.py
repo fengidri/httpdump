@@ -19,7 +19,10 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 def handle_tcp(c):
+    filter = config.get_filter()
     for tcp in get_tcpconn(c.infile):
+        if filter.index != None and tcp.index not in filter.index:
+            continue
         tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m\n" % \
                 (tcp.index, tcp.con_tuple[0], tcp.con_tuple[1],
                         tcp.con_tuple[2], tcp.con_tuple[3])

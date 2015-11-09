@@ -74,14 +74,23 @@ def init():
     global _parse_config
     global out
     parser = argparse.ArgumentParser()
+
+    #subparsers = parser.add_subparsers(help='sub-command help', dest = 'option')
+
+    #tcp  = subparsers.add_parser('tcp',  help = 'tcp  parser')
+    #udp  = subparsers.add_parser('udp',  help = 'udp  parser')
+    #http = subparsers.add_parser('http', help = 'http parser')
+    #tcp.add_argument("infile", nargs='?', help="the pcap file to parse")
+
+
     parser.add_argument("infile", nargs='?', help="the pcap file to parse")
     parser.add_argument("-i", "--ip", help="only parse packages with specified source OR dest ip")
     parser.add_argument("-p", "--port", type=int,
                         help="only parse packages with specified source OR dest port")
-    parser.add_argument("-v", "--verbosity", help="increase output verbosity(-vv is recommended)",
-                        action="count")
-    parser.add_argument("-g", "--group", help="group http request/response by connection",
-                        action="store_true")
+    #parser.add_argument("-v", "--verbosity", help="increase output verbosity(-vv is recommended)",
+    #                    action="count")
+    #parser.add_argument("-g", "--group", help="group http request/response by connection",
+    #                    action="store_true")
     parser.add_argument("-o", "--output", help="output to file instead of stdout")
     parser.add_argument("-e", "--encoding", help="decode the data use specified encodings.")
     parser.add_argument("-b", "--beauty", help="output json in a pretty way.", action="store_true")
@@ -117,12 +126,12 @@ def init():
 
     # deal with configs
     parse_config = _parse_config
-    if args.verbosity:
-        parse_config.level = args.verbosity
-    if args.encoding:
-        parse_config.encoding = args.encoding
+    #if args.verbosity:
+    #    parse_config.level = args.verbosity
+    #if args.encoding:
+    #    parse_config.encoding = args.encoding
     parse_config.pretty = args.beauty
-    parse_config.group = args.group
+    #parse_config.group = args.group
 
     parse_config.args = args
 
