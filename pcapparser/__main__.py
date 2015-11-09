@@ -7,6 +7,7 @@ from pcapparser.parse_pcap import get_tcpconn
 from pcapparser import config
 from pcapparser.httpparser import HttpType, HttpParser
 from pcapparser import parse_pcap
+from pcapparser.config import OutputLevel
 import utils
 
 
@@ -17,19 +18,31 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-def main():
-    config.init()
-    c = config.get_config()
-    maps = {'http': handle_http, 'info': handle_info}
-    handle = maps.get(c.args.target)
-    if handle:
-        handle(c)
+def handle_tcp(c):
+    for tcp in get_tcpconn(c.infile):
+        tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m\n" % \
+                (tcp.index, tcp.con_tuple[0], tcp.con_tuple[1],
+                        tcp.con_tuple[2], tcp.con_tuple[3])
+        utils.print(tcp_msg)
 
 def handle_info(c):
     utils.print(parse_pcap.get_infos(c.infile))
 
 def handle_http(c):
+    def printheaders(headers):
+        l = 0
+        for k in headers.keys():
+            if l < len(k):
+                l = len(k)
+        for k, v in headers.items():
+            utils.print(k.ljust(l))
+            utils.print(': ')
+            utils.print(v)
+            utils.print('\n')
+
     filter = config.get_filter()
+    level = config.get_config().level
+
     for tcpcon in get_tcpconn(c.infile):
         if filter.index != None and tcpcon.index not in filter.index:
             continue
@@ -38,8 +51,41 @@ def handle_http(c):
             continue
 
         http = HttpParser(tcpcon)
-        http.print(config.get_config().level)
 
+        if not http.msgs:
+            continue
+
+        tcp = http.tcp
+        tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m\n" % \
+                (tcp.index, tcp.con_tuple[0], tcp.con_tuple[1],
+                        tcp.con_tuple[2], tcp.con_tuple[3])
+        utils.print(tcp_msg)
+
+        if level == OutputLevel.ONLY_URL:
+            for msg in http.msgs:
+                if msg.is_request:
+                    utils.print(msg.reqline["method"] + ' ' + msg.URI())
+                    utils.print('\n')
+        else:
+            for i, msg in enumerate(http.msgs):
+                if msg.is_request and i != 0:
+                        utils.print('\033[31;2m')
+                        utils.print('-' * 80)
+                        utils.print('\033[0m')
+                        utils.print('\n')
+
+                utils.print(''.join(msg.raw_headers))
+                utils.print('\n')
+                if level == OutputLevel.ALL_BODY:
+                    utils.print(msg.body.getvalue())
+
+def main():
+    config.init()
+    c = config.get_config()
+    maps = {'http': handle_http, 'info': handle_info, 'tcp': handle_tcp}
+    handle = maps.get(c.args.target)
+    if handle:
+        handle(c)
 
 if __name__ == "__main__":
     main()

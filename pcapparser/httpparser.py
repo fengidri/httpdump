@@ -7,7 +7,6 @@ from pcapparser.constant import HttpType, Compress
 from pcapparser.reader import DataReader
 from pcapparser import config
 
-from pcapparser.config import OutputLevel
 
 from .StreamBuf import Stream
 
@@ -219,44 +218,4 @@ class HttpParser(object):
                 return res
 
             self.handles[http_type] = None
-
-    def print(self, level):
-        def printheaders(headers):
-            l = 0
-            for k in headers.keys():
-                if l < len(k):
-                    l = len(k)
-            for k, v in headers.items():
-                utils.print(k.ljust(l))
-                utils.print(': ')
-                utils.print(v)
-                utils.print('\n')
-
-        if not self.msgs:
-            return
-
-        tcp = self.tcp
-        tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m" % \
-                (tcp.index, tcp.con_tuple[0], tcp.con_tuple[1],
-                        tcp.con_tuple[2], tcp.con_tuple[3])
-        utils.print(tcp_msg)
-        utils.print('\n')
-
-        if level == OutputLevel.ONLY_URL:
-            for msg in self.msgs:
-                if msg.is_request:
-                    utils.print(msg.reqline["method"] + ' ' + msg.URI())
-                    utils.print('\n')
-        else:
-            for i, msg in enumerate(self.msgs):
-                if msg.is_request and i != 0:
-                        utils.print('\033[31;2m')
-                        utils.print('-' * 80)
-                        utils.print('\033[0m')
-                        utils.print('\n')
-
-                utils.print(''.join(msg.raw_headers))
-                utils.print('\n')
-                if level == OutputLevel.ALL_BODY:
-                    utils.print(msg.body.getvalue())
 
