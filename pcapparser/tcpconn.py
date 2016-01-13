@@ -53,6 +53,10 @@ class TcpConnection(object):
         """
         self.packets = []
 
+        self.win_scale = [0, 0]
+        self.seq_start = [0, 0]
+        self.time_start = 0
+
 
         self.up_stream = Stream()
         self.down_stream = Stream()
@@ -66,21 +70,31 @@ class TcpConnection(object):
                 packet.dest, packet.dest_port)
 
         self.msgs = []
+        self.fin = ''
 
     def on_packet(self, packet):
         """
         :type packet: TcpPack
         """
-        self.packets.append(packet)
 
         if packet.source_key() == self.client_key:
             send_stream = self.up_stream
             confirm_stream = self.down_stream
             pac_type = 1
+            self.packets.append((packet, 0))
+            if packet.syn:
+                self.win_scale[0] = packet.win_scal
+                self.seq_start[0] = packet.seq
+                self.time_start = packet.second
         else:
+            self.packets.append((packet, 1))
             send_stream = self.down_stream
             confirm_stream = self.up_stream
             pac_type = 0
+            if packet.syn:
+                self.win_scale[1] = packet.win_scal
+                self.seq_start[1] = packet.seq
+
 
         if len(packet.body) > 0:
             send_stream.append_packet(packet)
@@ -92,6 +106,8 @@ class TcpConnection(object):
                     self.msgs.append((pac_type, packet.body))
 
         if packet.fin:
+            if not self.fin:
+                self.fin = "%s -- > %s"  % (packet.source_port, packet.dest_port)
             send_stream.status = 1
 
     def closed(self):

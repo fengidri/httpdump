@@ -8,7 +8,7 @@ from pcapparser import config
 from pcapparser.httpparser import HttpType, HttpParser
 from pcapparser import parse_pcap
 from pcapparser.config import OutputLevel
-import utils
+from pcapparser import utils
 
 
 # when press Ctrl+C
@@ -18,14 +18,49 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
+def handle_tcptrace(c):
+
+    filter = config.get_filter()
+    for tcp in get_tcpconn(c.infile):
+        if filter.index != None and tcp.index not in filter.index:
+            continue
+
+
+        for packet, direct in  tcp.packets:
+            flag = '>'
+            ddirect = 1
+            if direct:
+                flag = '<'
+                ddirect = 0
+
+            seq = packet.seq - tcp.seq_start[direct]
+            if packet.ack:
+                ack_seq = packet.ack_seq - tcp.seq_start[ddirect]
+            else:
+                ack_seq = 0
+
+            win = ack_seq + packet.win
+            if tcp.win_scale[0] and tcp.win_scale[1] and not packet.syn:
+                win = ack_seq + packet.win << tcp.win_scale[direct]
+
+            second = (packet.second - tcp.time_start)/1000000
+
+            msg = "%s %f %s %s %s\n" % (flag, second, seq, ack_seq, win)
+
+            utils.print(msg)
+
+
+
+
+
 def handle_tcp(c):
     filter = config.get_filter()
     for tcp in get_tcpconn(c.infile):
         if filter.index != None and tcp.index not in filter.index:
             continue
-        tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m\n" % \
+        tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m fin: %s\n" % \
                 (tcp.index, tcp.con_tuple[0], tcp.con_tuple[1],
-                        tcp.con_tuple[2], tcp.con_tuple[3])
+                        tcp.con_tuple[2], tcp.con_tuple[3], tcp.fin)
         utils.print(tcp_msg)
 
 def handle_info(c):
@@ -85,7 +120,8 @@ def handle_http(c):
 def main():
     config.init()
     c = config.get_config()
-    maps = {'http': handle_http, 'info': handle_info, 'tcp': handle_tcp}
+    maps = {'http': handle_http, 'info': handle_info, 'tcp': handle_tcp,
+            'tcptrace': handle_tcptrace}
     handle = maps.get(c.args.target)
     if handle:
         handle(c)

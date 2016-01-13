@@ -14,6 +14,8 @@ class TcpPack:
         self.source = source
         self.dest = dest
         self.key = None
+        self.win_scal = 0
+
         self.parse_tcp_packet(ipbody)
 
     def parse_tcp_packet(self, tcp_packet):
@@ -21,12 +23,27 @@ class TcpPack:
         tcp_base_header_len = 20
         # tcp header
         tcp_header = tcp_packet[0:tcp_base_header_len]
-        source_port, dest_port, seq, ack_seq, t_f, flags = struct.unpack(b'!HHIIBB6x', tcp_header)
+        source_port, dest_port, seq, ack_seq, t_f, flags, win= \
+                struct.unpack('!HHIIBBH4x', tcp_header)
         # real tcp header len
         tcp_header_len = ((t_f >> 4) & 0xF) * 4
         # skip extension headers
         if tcp_header_len > tcp_base_header_len:
-            pass
+            opt_pos = tcp_base_header_len
+
+            while opt_pos < tcp_header_len:
+                if tcp_packet[opt_pos] ==  chr(0):
+                    break
+
+                if tcp_packet[opt_pos] ==  chr(1):
+                    opt_pos += 1
+                    continue
+
+                if tcp_packet[opt_pos] == chr(3):
+                    self.win_scal = ord(tcp_packet[opt_pos + 2])
+
+                opt_pos += ord(tcp_packet[opt_pos + 1])
+
 
         # body
         self.body = tcp_packet[tcp_header_len:]
@@ -42,6 +59,8 @@ class TcpPack:
         # psh = (flags >> 3) & 1
         self.ack = (flags >> 4) & 1
         # urg = (flags >> 5) & 1
+        self.win = win
+
 
 
     def __str__(self):
@@ -156,7 +175,8 @@ def read_tcp_packet(read_packet):
             # skip unknown link layer packet
             continue
         network_protocol, link_layer_body = parse_link_layer(link_packet)
-        transport_protocol, source, dest, ip_body = parse_ip_packet(network_protocol, link_layer_body)
+        transport_protocol, source, dest, ip_body = \
+                    parse_ip_packet(network_protocol, link_layer_body)
 
         if transport_protocol is None:
             continue
