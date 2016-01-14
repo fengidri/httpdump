@@ -10,6 +10,7 @@ from pcapparser import parse_pcap
 from pcapparser.config import OutputLevel
 from pcapparser import utils
 import json
+import os
 
 
 # when press Ctrl+C
@@ -20,12 +21,12 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 def handle_tcptrace(c):
-
     filter = config.get_filter()
-    data = []
     for tcp in get_tcpconn(c.infile):
         if filter.index != None and tcp.index not in filter.index:
             continue
+
+        data = []
 
 
         for packet, direct in  tcp.packets:
@@ -48,7 +49,9 @@ def handle_tcptrace(c):
             second = (packet.second - tcp.time_start)/1000000
 
             data.append((flag, second, seq, ack_seq, win))
-    print(json.dumps(data, indent=4))
+
+        title = "%s.json" % tcp.index
+        open(title, 'w').write(json.dumps(data, indent=4))
 
 
 
