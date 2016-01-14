@@ -9,6 +9,7 @@ from pcapparser.httpparser import HttpType, HttpParser
 from pcapparser import parse_pcap
 from pcapparser.config import OutputLevel
 from pcapparser import utils
+import json
 
 
 # when press Ctrl+C
@@ -21,6 +22,7 @@ signal.signal(signal.SIGINT, signal_handler)
 def handle_tcptrace(c):
 
     filter = config.get_filter()
+    data = []
     for tcp in get_tcpconn(c.infile):
         if filter.index != None and tcp.index not in filter.index:
             continue
@@ -45,9 +47,9 @@ def handle_tcptrace(c):
 
             second = (packet.second - tcp.time_start)/1000000
 
-            msg = "%s %f %s %s %s\n" % (flag, second, seq, ack_seq, win)
+            data.append((flag, second, seq, ack_seq, win))
+    print(json.dumps(data, indent=4))
 
-            utils.print(msg)
 
 
 
