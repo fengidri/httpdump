@@ -60,6 +60,7 @@ class TcpPack:
         self.ack = (flags >> 4) & 1
         # urg = (flags >> 5) & 1
         self.win = win
+        self.length = len(tcp_packet) - tcp_header_len
 
 
 

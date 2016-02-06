@@ -48,7 +48,7 @@ def handle_tcptrace(c):
 
             second = (packet.second - tcp.time_start)/1000000
 
-            data.append((flag, second, seq, ack_seq, win))
+            data.append((flag, second, seq + packet.length, ack_seq, win))
 
 
         title = "%s.json" % tcp.index
