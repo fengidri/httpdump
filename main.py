@@ -50,7 +50,12 @@ def handle_tcptrace(c):
 
             data.append((flag, second, seq, ack_seq, win))
 
+
         title = "%s.json" % tcp.index
+        print("tcptrace %s:%s --> %s:%s dump to %s" % (tcp.con_tuple[0],
+                tcp.con_tuple[1], tcp.con_tuple[2], tcp.con_tuple[3], title))
+        info = {}
+
         open(title, 'w').write(json.dumps(data, indent=4))
 
 
