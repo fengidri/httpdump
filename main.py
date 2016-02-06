@@ -30,15 +30,18 @@ def handle_tcptrace(c):
 
 
         for packet, direct in  tcp.packets:
-            flag = '>'
+            flag = '>' # client
             ddirect = 1
             if direct:
-                flag = '<'
+                flag = '<' # server
                 ddirect = 0
 
-            seq = packet.seq - tcp.seq_start[direct]
+            self_seq_start = tcp.seq_start[direct]
+            other_seq_start = tcp.seq_start[ddirect]
+
+            seq = packet.seq - self_seq_start
             if packet.ack:
-                ack_seq = packet.ack_seq - tcp.seq_start[ddirect]
+                ack_seq = packet.ack_seq - other_seq_start
             else:
                 ack_seq = 0
 
@@ -47,16 +50,22 @@ def handle_tcptrace(c):
                 win = ack_seq + packet.win << tcp.win_scale[direct]
 
             second = (packet.second - tcp.time_start)/1000000
+            sack = []
+            for s, e in packet.sack:
+                sack.append([s - other_seq_start, e - other_seq_start])
 
-            data.append((flag, second, seq + packet.length, ack_seq, win))
+            data.append((flag, second, seq + packet.length, ack_seq, win, sack))
 
 
         title = "%s.json" % tcp.index
         print("tcptrace %s:%s --> %s:%s dump to %s" % (tcp.con_tuple[0],
                 tcp.con_tuple[1], tcp.con_tuple[2], tcp.con_tuple[3], title))
-        info = {}
+        info = {
+                "tuple": tcp.con_tuple,
+                "trace": data,
+                }
 
-        open(title, 'w').write(json.dumps(data, indent=4))
+        open(title, 'w').write(json.dumps(info, indent=4))
 
 
 

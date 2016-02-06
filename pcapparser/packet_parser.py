@@ -15,6 +15,7 @@ class TcpPack:
         self.dest = dest
         self.key = None
         self.win_scal = 0
+        self.sack = []
 
         self.parse_tcp_packet(ipbody)
 
@@ -39,8 +40,19 @@ class TcpPack:
                     opt_pos += 1
                     continue
 
-                if tcp_packet[opt_pos] == chr(3):
+                if tcp_packet[opt_pos] == chr(3): # win scal
                     self.win_scal = ord(tcp_packet[opt_pos + 2])
+
+                if tcp_packet[opt_pos] == chr(5): # sack
+                    l = ord(tcp_packet[opt_pos + 1])
+                    data_len = l - 2
+                    sack_pos = opt_pos + 2
+                    while data_len >= 8:
+                        self.sack.append(
+                                struct.unpack('!II', tcp_packet[sack_pos:
+                                    sack_pos + 8]))
+                        data_len =- 8
+                        sack_pos += 8
 
                 opt_pos += ord(tcp_packet[opt_pos + 1])
 
