@@ -45,16 +45,17 @@ def handle_tcptrace(c):
             else:
                 ack_seq = 0
 
-            win = ack_seq + packet.win
             if tcp.win_scale[0] and tcp.win_scale[1] and not packet.syn:
-                win = ack_seq + packet.win << tcp.win_scale[direct]
+                win = ack_seq + packet.win * tcp.win_scale[direct]
+            else:
+                win = ack_seq + packet.win
 
             second = (packet.second - tcp.time_start)/1000000
             sack = []
             for s, e in packet.sack:
                 sack.append([s - other_seq_start, e - other_seq_start])
 
-            data.append((flag, second, seq + packet.length, ack_seq, win, sack))
+            data.append((flag, second, seq, ack_seq, win, sack, packet.length))
 
 
         title = "%s.json" % tcp.index

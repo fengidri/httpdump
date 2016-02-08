@@ -41,7 +41,7 @@ class TcpPack:
                     continue
 
                 if tcp_packet[opt_pos] == chr(3): # win scal
-                    self.win_scal = ord(tcp_packet[opt_pos + 2])
+                    self.win_scal = 1 << ord(tcp_packet[opt_pos + 2])
 
                 if tcp_packet[opt_pos] == chr(5): # sack
                     l = ord(tcp_packet[opt_pos + 1])
