@@ -16,6 +16,19 @@ class TcpPack:
         self.key = None
         self.parse_tcp_packet(ipbody)
 
+        skey = '%s:%d' % (self.source, self.source_port)
+        dkey = '%s:%d' % (self.dest, self.dest_port)
+        if skey < dkey:
+            self.direct = 1
+            self.key = skey + '-' + dkey
+        else:
+            self.direct = 0
+            self.key = dkey + '-' + skey
+
+        self.tuple = "%s -> %s" %(skey, dkey)
+        self.skey = skey
+        self.dkey = dkey
+
     def parse_tcp_packet(self, tcp_packet):
         """read tcp data.http only build on tcp, so we do not need to support other protocols."""
         tcp_base_header_len = 20
@@ -50,14 +63,6 @@ class TcpPack:
                 self.ack_seq, len(self.body), self.fin, self.syn, self.ack)
 
     def gen_key(self):
-        if self.key:
-            return self.key
-        skey = '%s:%d' % (self.source, self.source_port)
-        dkey = '%s:%d' % (self.dest, self.dest_port)
-        if skey < dkey:
-            self.key = skey + '-' + dkey
-        else:
-            self.key = dkey + '-' + skey
         return self.key
 
     def source_key(self):
@@ -155,8 +160,10 @@ def read_tcp_packet(read_packet):
         if parse_link_layer is None:
             # skip unknown link layer packet
             continue
+
         network_protocol, link_layer_body = parse_link_layer(link_packet)
-        transport_protocol, source, dest, ip_body = parse_ip_packet(network_protocol, link_layer_body)
+        transport_protocol, source, dest, ip_body = \
+                    parse_ip_packet(network_protocol, link_layer_body)
 
         if transport_protocol is None:
             continue

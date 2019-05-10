@@ -97,7 +97,9 @@ def init():
     parser.add_argument("-d", "--domain", help="filter http data by request domain")
     parser.add_argument("-u", "--uri", help="filter http data by request uri pattern")
     parser.add_argument("-I", "--index", help="select the index")
-    parser.add_argument("-t", "--target", default = "http")
+    parser.add_argument("-t", "--target", default = "tcp")
+    parser.add_argument("--draw-source", dest='draw_source')
+
 
     args = parser.parse_args()
 

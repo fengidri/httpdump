@@ -8,7 +8,9 @@ from pcapparser import config
 from pcapparser.httpparser import HttpType, HttpParser
 from pcapparser import parse_pcap
 from pcapparser.config import OutputLevel
-import utils
+import pcapparser.utils as utils
+import pcapparser.parse_pcap as parse_pcap
+import tcp
 
 
 # when press Ctrl+C
@@ -16,7 +18,7 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
-signal.signal(signal.SIGINT, signal_handler)
+#signal.signal(signal.SIGINT, signal_handler)
 
 def handle_tcp(c):
     filter = config.get_filter()
@@ -85,7 +87,14 @@ def handle_http(c):
 def main():
     config.init()
     c = config.get_config()
-    maps = {'http': handle_http, 'info': handle_info, 'tcp': handle_tcp}
+
+    maps = {
+            'http': handle_http,
+            'info': handle_info,
+            'tcp': handle_tcp,
+            'tcp-flight': tcp.get_tcpconn_flight,
+            }
+
     handle = maps.get(c.args.target)
     if handle:
         handle(c)
