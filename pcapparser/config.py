@@ -2,7 +2,6 @@ from __future__ import unicode_literals, print_function, division
 import sys
 import argparse
 import io
-import handler
 
 __author__ = 'dongliu'
 
@@ -35,47 +34,14 @@ def get_config():
     return _parse_config
 
 
-class Filter(object):
-    """filter settings"""
-
-    def __init__(self):
-        self.ip = None
-        self.port = None
-        self.domain = None
-        self.uri_pattern = None
-        self.index = None
-
-    def by_ip(self, ip):
-        return not self.ip or self.ip == ip
-
-    def by_port(self, port):
-        return not self.port or self.port == port
-
-    def by_domain(self, domain):
-        return not self.domain or self.domain == domain
-
-    def by_uri(self, uri):
-        return not self.uri_pattern or self.uri_pattern in uri
-
-    def by_con_tuple(self, con_tuple):
-        return True
-        pass #TODO
-
-    #def by_index(self, index):
 
 
-_filter = Filter()
 out = None
 
-
-def get_filter():
-    global _filter
-    return _filter
-
 def init():
-    global _filter
     global _parse_config
     global out
+
     parser = argparse.ArgumentParser()
 
     #subparsers = parser.add_subparsers(help='sub-command help', dest = 'option')
@@ -87,9 +53,12 @@ def init():
 
 
     parser.add_argument("infile", nargs='?', help="the pcap file to parse")
-    parser.add_argument("-i", "--ip", help="only parse packages with specified source OR dest ip")
-    parser.add_argument("-p", "--port", type=int,
-                        help="only parse packages with specified source OR dest port")
+    parser.add_argument("--dport",    default = None, type=int)
+    parser.add_argument("--sport",    default = None, type=int)
+    parser.add_argument("--port",     default = None, type=int)
+    parser.add_argument("--host",     default = None)
+    parser.add_argument("--src-host", default = None)
+    parser.add_argument("--dst-host", default = None)
     #parser.add_argument("-v", "--verbosity", help="increase output verbosity(-vv is recommended)",
     #                    action="count")
     #parser.add_argument("-g", "--group", help="group http request/response by connection",
@@ -101,8 +70,9 @@ def init():
     parser.add_argument("-u", "--uri", help="filter http data by request uri pattern")
     parser.add_argument("-I", "--index", help="select the index")
     parser.add_argument("-t",  dest='target', default = "tcp", help='default: tcp. such as: %s' %
-            ','.join(handler.maps))
-    parser.add_argument("--draw-source")
+            ','.join([]))
+    parser.add_argument("--draw-sport", type=int)
+    parser.add_argument("--draw-src-host")
     parser.add_argument("--draw-output")
 
 
@@ -115,21 +85,6 @@ def init():
         infile = sys.stdin
 
     _parse_config.infile = infile
-
-    _filter.ip = args.ip
-    _filter.port = args.port
-    _filter.domain = args.domain
-    _filter.uri_pattern = args.uri
-    if args.index:
-        _filter.index = []
-        for i in args.index.split(','):
-            if i.find('-') > -1:
-                s, e = i.split('-')
-                _filter.index += range(int(s), int(e) + 1)
-            else:
-                _filter.index.append(int(i))
-    else:
-        _filter.index = None
 
     # deal with configs
     parse_config = _parse_config
@@ -148,4 +103,4 @@ def init():
         output_file = sys.stdout
 
     out = output_file
-
+init()

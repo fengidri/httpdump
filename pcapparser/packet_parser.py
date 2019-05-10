@@ -5,6 +5,19 @@ __author__ = 'dongliu'
 import struct
 import socket
 from pcapparser.constant import *
+from pcapparser import pcap, pcapng, utils
+import config
+
+class filter:
+    dst_port = config.get_config().args.dport
+    src_port = config.get_config().args.sport
+    port     = config.get_config().args.port
+    host     = config.get_config().args.host
+    dst_host = config.get_config().args.dst_host
+    src_host = config.get_config().args.src_host
+
+    draw_sport = config.get_config().args.draw_sport
+    draw_src_host = config.get_config().args.draw_src_host
 
 
 class TcpPack:
@@ -67,6 +80,17 @@ class TcpPack:
 
     def source_key(self):
         return '%s:%d' % (self.source, self.source_port)
+
+    def draw_check(self):
+        if filter.draw_sport:
+            if filter.draw_sport != self.source_port:
+                return False
+
+        if filter.draw_src_host:
+            if filter.args.draw_src_host != self.source:
+                return False
+
+        return True
 
 
 # http://standards.ieee.org/about/get/802/802.3.html
@@ -151,26 +175,93 @@ def parse_udp_packet(ip_body):
     source_port, dest_port, length, check_sum = struct.unpack(b'!HHHH', udp_header)
     return source_port, dest_port, ip_body[8:length]
 
+def get_file_format(infile):
+    """
+    get cap file format by magic num.
+    return file format and the first byte of string
+    :type infile:file
+    """
+    buf = infile.read(4)
+    if len(buf) == 0:
+        # EOF
+        print("empty file", file=sys.stderr)
+        sys.exit(-1)
+    if len(buf) < 4:
+        print("file too small", file=sys.stderr)
+        sys.exit(-1)
+    magic_num, = struct.unpack(b'<I', buf)
+    if magic_num == 0xA1B2C3D4 or magic_num == 0x4D3C2B1A:
+        return FileFormat.PCAP, buf
+    elif magic_num == 0x0A0D0D0A:
+        return FileFormat.PCAP_NG, buf
+    else:
+        return FileFormat.UNKNOWN, buf
 
-def read_tcp_packet(read_packet):
-    """ generator, read a *TCP* package once."""
+class PcapFile(object):
+    def __init__(self, infile):
+        self.infile = infile
 
-    for link_type, micro_second, link_packet in read_packet():
-        parse_link_layer = get_link_layer_parser(link_type)
-        if parse_link_layer is None:
-            # skip unknown link layer packet
-            continue
+        file_format, head = get_file_format(infile)
+        if file_format == FileFormat.PCAP:
+            pcap_file = pcap.PcapFile(infile, head)
+        elif file_format == FileFormat.PCAP_NG:
+            pcap_file = pcapng.PcapngFile(infile, head)
+        else:
+            print("unknown file format.", file=sys.stderr)
+            sys.exit(1)
 
-        network_protocol, link_layer_body = parse_link_layer(link_packet)
-        transport_protocol, source, dest, ip_body = \
-                    parse_ip_packet(network_protocol, link_layer_body)
+        self.pcap_file = pcap_file
 
-        if transport_protocol is None:
-            continue
+    def __iter__(self):
+        self.iter = self.pcap_file.read_packet()
+        return self
 
-        # tcp
-        if transport_protocol == TransferProtocol.TCP:
-            yield TcpPack(micro_second, source, dest, ip_body)
+    def next(self):
+        while True:
+            link_type, micro_second, link_packet = self.iter.next()
+
+            parse_link_layer = get_link_layer_parser(link_type)
+            if parse_link_layer is None:
+                # skip unknown link layer packet
+                continue
+
+            network_protocol, link_layer_body = parse_link_layer(link_packet)
+
+            transport_protocol, source, dest, ip_body = \
+                        parse_ip_packet(network_protocol, link_layer_body)
+
+            if transport_protocol is None:
+                continue
+
+            if filter.dst_host:
+                if filter.dst_host != dst:
+                    continue
+
+            if filter.src_host:
+                if ilter.src_host != source:
+                    continue
+
+            if filter.host:
+                if not (filter.host == dst or filter.host == source):
+                    continue
+
+            # tcp
+            if transport_protocol == TransferProtocol.TCP:
+                t = TcpPack(micro_second, source, dest, ip_body)
+                if filter.dst_port:
+                    if filter.dst_port != t.dest_port:
+                        continue
+
+                if filter.src_port:
+                    if ilter.src_port != t.source_port:
+                        continue
+
+                if filter.port:
+                    if not (filter.port == t.dest_port or
+                            filter.port == t.source_port):
+                        continue
+                return t
+
 
 
 def info(read_packet):

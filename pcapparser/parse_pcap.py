@@ -9,41 +9,11 @@ from pcapparser.constant import FileFormat
 from pcapparser.utils import is_request
 
 
-def get_file_format(infile):
-    """
-    get cap file format by magic num.
-    return file format and the first byte of string
-    :type infile:file
-    """
-    buf = infile.read(4)
-    if len(buf) == 0:
-        # EOF
-        print("empty file", file=sys.stderr)
-        sys.exit(-1)
-    if len(buf) < 4:
-        print("file too small", file=sys.stderr)
-        sys.exit(-1)
-    magic_num, = struct.unpack(b'<I', buf)
-    if magic_num == 0xA1B2C3D4 or magic_num == 0x4D3C2B1A:
-        return FileFormat.PCAP, buf
-    elif magic_num == 0x0A0D0D0A:
-        return FileFormat.PCAP_NG, buf
-    else:
-        return FileFormat.UNKNOWN, buf
 
 def parse_pcap_file(infile):
     """
     :type infile:file
     """
-    file_format, head = get_file_format(infile)
-    if file_format == FileFormat.PCAP:
-        pcap_file = pcap.PcapFile(infile, head).read_packet
-    elif file_format == FileFormat.PCAP_NG:
-        pcap_file = pcapng.PcapngFile(infile, head).read_packet
-    else:
-        print("unknown file format.", file=sys.stderr)
-        sys.exit(1)
-    return pcap_file
 
 
 

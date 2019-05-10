@@ -6,18 +6,13 @@
 
 
 import tcp
-import config
 import utils
 from pcapparser.httpparser import HttpType, HttpParser
 import parse_pcap
 
 
 def handle_tcp(c):
-    filter = config.get_filter()
     for con in tcp.get_tcpconn(c.infile):
-        if filter.index != None and con.index not in filter.index:
-            continue
-
         tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m\n" % \
                 (con.index, con.con_tuple[0], con.con_tuple[1],
                         con.con_tuple[2], con.con_tuple[3])
@@ -39,15 +34,10 @@ def handle_http(c):
             utils.log(v)
             utils.log('\n')
 
-    filter = config.get_filter()
+    import config
     level = config.get_config().level
 
     for tcpcon in tcp.get_tcpconn(c.infile):
-        if filter.index != None and tcpcon.index not in filter.index:
-            continue
-
-        if not (filter.by_con_tuple(tcpcon.con_tuple)):
-            continue
 
         http = HttpParser(tcpcon)
 
@@ -86,4 +76,5 @@ maps = {
         'tcp-flight': tcp.get_tcpconn_flight,
         'tcp-throughput': tcp.get_tcpconn_throughput,
         'tcp-seq': tcp.get_tcpconn_seq,
+        'tcp-rtt': tcp.get_tcpconn_rtt,
         }

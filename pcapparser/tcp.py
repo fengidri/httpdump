@@ -9,6 +9,7 @@ import parse_pcap
 from pcapparser import packet_parser
 from collections import OrderedDict
 from tcpconn  import TcpConnection
+from packet_parser import PcapFile
 import utils
 
 class TcpWin:
@@ -23,6 +24,7 @@ class TcpConn:
     def __init__(self):
         self.win1 = TcpWin()
         self.win2 = TcpWin()
+        self.rtt = 0
 
 
     @classmethod
@@ -60,12 +62,13 @@ class TcpConn:
 
         if packet.ack_seq > win2.ack:
             win2.ack = packet.ack_seq
-            for s in win2.inflight:
-                if s < win2.ack:
-                    win2.inflight.remove(s)
+            for p in win2.inflight:
+                if p.seq < win2.ack:
+                    self.rtt = (packet.second - p.second)/1000
+                    win2.inflight.remove(p)
 
         if packet.seq >= win1.ack:
-            win1.inflight.append(packet.seq)
+            win1.inflight.append(packet)
 
         self.tmp_win1 = win1
         self.tmp_win2 = win2
@@ -109,11 +112,9 @@ def draw_flight(x, y, opt_title, opt_xlabel, opt_ylabel, output):
 
 
 def get_tcpconn(infile):
-    pcap_file = parse_pcap.parse_pcap_file(infile)
-
     conn_dict = OrderedDict()
     conn_sorted = []
-    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
+    for tcp_pac in PcapFile(infile):
         key = tcp_pac.gen_key()
         # we already have this conn
         if key in conn_dict:
@@ -137,14 +138,12 @@ def get_tcpconn(infile):
 
 
 def get_tcpconn_flight(c):
-    pcap_file = parse_pcap.parse_pcap_file(c.infile)
-
     data = []
 
-    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
+    for tcp_pac in PcapFile(c.infile):
         con = TcpConn.handle_packet(tcp_pac)
 
-        if c.args.draw_source == tcp_pac.skey and con and con.tmp_win1:
+        if tcp_pac.draw_check() and con and con.tmp_win1:
              win1 = con.tmp_win1
              data.append([tcp_pac.second, len(win1.inflight)])
 
@@ -153,14 +152,12 @@ def get_tcpconn_flight(c):
 
 
 def get_tcpconn_throughput(c):
-    pcap_file = parse_pcap.parse_pcap_file(c.infile)
-
     data = {}
 
     inter = 10 * 1000
 
-    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
-        if c.args.draw_source == tcp_pac.skey:
+    for tcp_pac in PcapFile(c.infile):
+        if tcp_pac.draw_check():
             s = int(tcp_pac.second / inter) * inter
             if data.get(s):
                 data[s] = data[s] + 1
@@ -180,12 +177,10 @@ def get_tcpconn_throughput(c):
 
 
 def get_tcpconn_seq(c):
-    pcap_file = parse_pcap.parse_pcap_file(c.infile)
-
     data = []
 
-    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
-        if c.args.draw_source == tcp_pac.skey:
+    for tcp_pac in PcapFile(c.infile):
+        if tcp_pac.draw_check():
              data.append([tcp_pac.second, tcp_pac.seq])
 
     x, y = zip(*data)
@@ -193,6 +188,17 @@ def get_tcpconn_seq(c):
 
 
 
+def get_tcpconn_rtt(c):
+    data = []
+
+    for tcp_pac in PcapFile(c.infile):
+        con = TcpConn.handle_packet(tcp_pac)
+
+        if con and tcp_pac.draw_check():
+             data.append([tcp_pac.second, con.rtt])
+
+    x, y = zip(*data)
+    draw_flight(x, y, 'rtt', 'Time', 'ms', c.args.draw_output)
 
 
 

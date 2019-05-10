@@ -19,7 +19,6 @@ def signal_handler(signal, frame):
 
 
 def main():
-    config.init()
     c = config.get_config()
 
 
