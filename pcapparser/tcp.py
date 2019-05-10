@@ -69,15 +69,15 @@ class TcpConn:
 
 
 
-def draw_flight(data):
-    x, y = zip(*data)
+def draw_flight(x, y, opt_title, opt_xlabel, opt_ylabel, output):
+#    x, y = zip(*data)
 
     #####################################################
     opt_x      = x
     opt_y      = y
-    opt_title  = "inflight"
-    opt_xlabel = "Time"
-    opt_ylabel = "flight"
+#    opt_title  = "inflight"
+#    opt_xlabel = "Time"
+#    opt_ylabel = "flight"
     #####################################################
 
     import matplotlib as mpl
@@ -88,7 +88,8 @@ def draw_flight(data):
     from matplotlib.ticker import MultipleLocator, FuncFormatter
 
     plt.figure(figsize=(20, 10.5))
-    plt.plot(opt_x, opt_y)
+    plt.plot(opt_x, opt_y) #拆线图
+#    plt.scatter(opt_x, opt_y) # 点图
     plt.xlabel(opt_xlabel)
     plt.ylabel(opt_ylabel)
     plt.title(opt_title)
@@ -101,7 +102,7 @@ def draw_flight(data):
 #    ax.xaxis.set_minor_locator( MultipleLocator(300) )
 #    ax.xaxis.set_major_locator(mdates.MinuteLocator(byminute=[0,30], interval=30))
 
-    plt.savefig("/home/feng/share/tcp-flight1.png")
+    plt.savefig(output)
 
 
 
@@ -118,4 +119,58 @@ def get_tcpconn_flight(c):
         if c.args.draw_source == tcp_pac.skey and con and con.tmp_win1:
              win1 = con.tmp_win1
              data.append([tcp_pac.second, len(win1.inflight)])
-    draw_flight(data)
+
+    x, y = zip(*data)
+    draw_flight(x, y, 'inflight', 'Time', 'packet', c.args.draw_output)
+
+
+def get_tcpconn_throughput(c):
+    pcap_file = parse_pcap.parse_pcap_file(c.infile)
+
+    data = {}
+
+    inter = 10 * 1000
+
+    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
+        if c.args.draw_source == tcp_pac.skey:
+            s = int(tcp_pac.second / inter) * inter
+            if data.get(s):
+                data[s] = data[s] + 1
+            else:
+                data[s] = 1
+
+
+    x = data.keys()
+    x.sort()
+    y = [data[_] for _ in x]
+
+    draw_flight(x, y, 'throughput', 'Time', 'packet', c.args.draw_output)
+
+
+
+
+
+
+def get_tcpconn_seq(c):
+    pcap_file = parse_pcap.parse_pcap_file(c.infile)
+
+    data = []
+
+    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
+        if c.args.draw_source == tcp_pac.skey:
+             data.append([tcp_pac.second, tcp_pac.seq])
+
+    x, y = zip(*data)
+    draw_flight(x, y, 'seq', 'Time', 'seq', c.args.draw_output)
+
+
+
+
+
+
+
+
+
+
+
+

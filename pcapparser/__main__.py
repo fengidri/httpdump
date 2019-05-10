@@ -93,6 +93,8 @@ def main():
             'info': handle_info,
             'tcp': handle_tcp,
             'tcp-flight': tcp.get_tcpconn_flight,
+            'tcp-throughput': tcp.get_tcpconn_throughput,
+            'tcp-seq': tcp.get_tcpconn_seq,
             }
 
     handle = maps.get(c.args.target)
