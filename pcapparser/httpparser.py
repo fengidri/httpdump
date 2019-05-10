@@ -5,7 +5,7 @@ from collections import defaultdict
 from pcapparser import utils
 from pcapparser.constant import HttpType, Compress
 from pcapparser.reader import DataReader
-from pcapparser import config
+import config
 
 
 from .StreamBuf import Stream

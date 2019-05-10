@@ -7,6 +7,9 @@
 
 import parse_pcap
 from pcapparser import packet_parser
+from collections import OrderedDict
+from tcpconn  import TcpConnection
+import utils
 
 class TcpWin:
     def __init__(self):
@@ -105,6 +108,31 @@ def draw_flight(x, y, opt_title, opt_xlabel, opt_ylabel, output):
     plt.savefig(output)
 
 
+def get_tcpconn(infile):
+    pcap_file = parse_pcap.parse_pcap_file(infile)
+
+    conn_dict = OrderedDict()
+    conn_sorted = []
+    for tcp_pac in packet_parser.read_tcp_packet(pcap_file):
+        key = tcp_pac.gen_key()
+        # we already have this conn
+        if key in conn_dict:
+            conn_dict[key].on_packet(tcp_pac)
+            # conn closed.
+            if conn_dict[key].closed():
+                del conn_dict[key]
+
+        # begin tcp connection.
+        elif tcp_pac.syn and not tcp_pac.ack:
+            conn_dict[key] = TcpConnection(tcp_pac)
+            conn_sorted.append(conn_dict[key])
+
+        elif utils.is_request(tcp_pac.body):
+            # tcp init before capture, we start from a possible http request header.
+            conn_dict[key] = TcpConnection(tcp_pac)
+            conn_sorted.append(conn_dict[key])
+
+    return conn_sorted
 
 
 

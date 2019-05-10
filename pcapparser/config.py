@@ -2,8 +2,11 @@ from __future__ import unicode_literals, print_function, division
 import sys
 import argparse
 import io
+import handler
 
 __author__ = 'dongliu'
+
+
 
 
 class OutputLevel(object):
@@ -97,7 +100,8 @@ def init():
     parser.add_argument("-d", "--domain", help="filter http data by request domain")
     parser.add_argument("-u", "--uri", help="filter http data by request uri pattern")
     parser.add_argument("-I", "--index", help="select the index")
-    parser.add_argument("-t", "--target", default = "tcp")
+    parser.add_argument("-t",  dest='target', default = "tcp", help='default: tcp. such as: %s' %
+            ','.join(handler.maps))
     parser.add_argument("--draw-source")
     parser.add_argument("--draw-output")
 

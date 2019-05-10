@@ -8,7 +8,7 @@ __author__ = 'dongliu'
 import json
 from io import BytesIO
 import gzip
-from pcapparser import config
+import config
 
 
 class Mime(object):
@@ -186,3 +186,8 @@ def print(msg):
         else:
                 print(e, file=sys.stderr)
                 sys.exit(-1)
+
+
+log = print
+
+
