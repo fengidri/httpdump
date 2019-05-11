@@ -8,7 +8,6 @@
 import parse_pcap
 from pcapparser import packet_parser
 from collections import OrderedDict
-from tcpconn  import TcpConnection
 from packet_parser import PcapFile
 import utils
 
@@ -17,21 +16,33 @@ class TcpWin:
         self.inflight = []
         self.fin = False
         self.ack = 0
+        self.seqs = []
+        self.retransmit = 0
+        self.num = 0
+        self.dupack = 0
 
 
 class TcpConn:
     cons = {}
-    def __init__(self):
+    All = []
+    def __init__(self, packet):
         self.win1 = TcpWin()
         self.win2 = TcpWin()
         self.rtt = 0
+        self.All.append(self)
+        self.tuple = packet.tuple
+        self.src = packet.skey
 
 
     @classmethod
     def handle_packet(cls, packet):
         key = packet.key
         if packet.syn and not packet.ack:
-            cls.cons[key] = cls()
+            cls.cons[key] = cls(packet)
+            return
+
+        if packet.fin and cls.cons.get(key):
+            del cls.cons[key]
             return
 
         con = cls.cons.get(key)
@@ -46,7 +57,7 @@ class TcpConn:
         return con
 
     def handle(self, packet):
-        if packet.direct:
+        if packet.skey == self.src:
             win1 = self.win1
             win2 = self.win2
         else:
@@ -60,6 +71,7 @@ class TcpConn:
             win1.fin = True
             return
 
+
         if packet.ack_seq > win2.ack:
             win2.ack = packet.ack_seq
             for p in win2.inflight:
@@ -67,8 +79,16 @@ class TcpConn:
                     self.rtt = (packet.second - p.second)/1000
                     win2.inflight.remove(p)
 
-        if packet.seq >= win1.ack:
-            win1.inflight.append(packet)
+        if packet.body:
+            win1.num += 1
+            if packet.seq in win1.seqs:
+                win1.retransmit += 1
+            else:
+                win1.seqs.append(packet.seq)
+                win1.inflight.append(packet)
+        else:
+            if packet.ack_seq == win2.ack:
+                win1.dupack += 1
 
         self.tmp_win1 = win1
         self.tmp_win2 = win2
@@ -111,29 +131,34 @@ def draw_flight(x, y, opt_title, opt_xlabel, opt_ylabel, output):
     plt.savefig(output)
 
 
-def get_tcpconn(infile):
-    conn_dict = OrderedDict()
-    conn_sorted = []
-    for tcp_pac in PcapFile(infile):
-        key = tcp_pac.gen_key()
-        # we already have this conn
-        if key in conn_dict:
-            conn_dict[key].on_packet(tcp_pac)
-            # conn closed.
-            if conn_dict[key].closed():
-                del conn_dict[key]
+def get_tcpconn(c):
+    for tcp_pac in PcapFile(c.infile):
+        TcpConn.handle_packet(tcp_pac)
 
-        # begin tcp connection.
-        elif tcp_pac.syn and not tcp_pac.ack:
-            conn_dict[key] = TcpConnection(tcp_pac)
-            conn_sorted.append(conn_dict[key])
+    return TcpConn.All
 
-        elif utils.is_request(tcp_pac.body):
-            # tcp init before capture, we start from a possible http request header.
-            conn_dict[key] = TcpConnection(tcp_pac)
-            conn_sorted.append(conn_dict[key])
-
-    return conn_sorted
+#    conn_dict = OrderedDict()
+#    conn_sorted = []
+#    for tcp_pac in PcapFile(infile):
+#        key = tcp_pac.gen_key()
+#        # we already have this conn
+#        if key in conn_dict:
+#            conn_dict[key].on_packet(tcp_pac)
+#            # conn closed.
+#            if conn_dict[key].closed():
+#                del conn_dict[key]
+#
+#        # begin tcp connection.
+#        elif tcp_pac.syn and not tcp_pac.ack:
+#            conn_dict[key] = TcpConnection(tcp_pac)
+#            conn_sorted.append(conn_dict[key])
+#
+#        elif utils.is_request(tcp_pac.body):
+#            # tcp init before capture, we start from a possible http request header.
+#            conn_dict[key] = TcpConnection(tcp_pac)
+#            conn_sorted.append(conn_dict[key])
+#
+#    return conn_sorted
 
 
 

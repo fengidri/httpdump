@@ -6,6 +6,7 @@ import struct
 import socket
 from pcapparser.constant import *
 from pcapparser import pcap, pcapng, utils
+import sys
 import config
 
 class filter:
@@ -32,10 +33,8 @@ class TcpPack:
         skey = '%s:%d' % (self.source, self.source_port)
         dkey = '%s:%d' % (self.dest, self.dest_port)
         if skey < dkey:
-            self.direct = 1
             self.key = skey + '-' + dkey
         else:
-            self.direct = 0
             self.key = dkey + '-' + skey
 
         self.tuple = "%s -> %s" %(skey, dkey)
@@ -214,10 +213,17 @@ class PcapFile(object):
 
     def __iter__(self):
         self.iter = self.pcap_file.read_packet()
+        self.iter_num = 0
         return self
 
     def next(self):
         while True:
+
+            #if self.iter_num % 100 == 0:
+            #    utils.log('\r%d' % self.iter_num)
+            #    sys.stdout.flush()
+
+            self.iter_num += 1
             link_type, micro_second, link_packet = self.iter.next()
 
             parse_link_layer = get_link_layer_parser(link_type)

@@ -12,12 +12,18 @@ import parse_pcap
 
 
 def handle_tcp(c):
-    for con in tcp.get_tcpconn(c.infile):
-        tcp_msg = "\033[31;2m%s [%s:%d] -- -- --> [%s:%d]\033[0m\n" % \
-                (con.index, con.con_tuple[0], con.con_tuple[1],
-                        con.con_tuple[2], con.con_tuple[3])
+    for con in tcp.get_tcpconn(c):
+        msg = "%s retransmit: %s/%s dupack: %s/%s psh: %s/%s\n" % (
+                con.tuple,
+                con.win1.retransmit,
+                con.win2.retransmit,
+                con.win1.dupack,
+                con.win2.dupack,
+                con.win1.num,
+                con.win2.num,
+                )
 
-        utils.log(tcp_msg)
+        utils.log(msg)
 
 def handle_info(c):
     utils.log(parse_pcap.get_infos(c.infile))
