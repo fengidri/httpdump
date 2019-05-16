@@ -95,16 +95,22 @@ class TcpConn:
 
 
 
-def draw_flight(x, y, opt_title, opt_xlabel, opt_ylabel, output):
-#    x, y = zip(*data)
+def draw_sub(plt, d):
+    opt_x      = d[0]
+    opt_y      = d[1]
 
-    #####################################################
-    opt_x      = x
-    opt_y      = y
-#    opt_title  = "inflight"
-#    opt_xlabel = "Time"
-#    opt_ylabel = "flight"
-    #####################################################
+    plt.plot(opt_x, opt_y) #拆线图
+#    plt.scatter(opt_x, opt_y) # 点图
+
+    #plt.xlabel(d[3])
+    plt.ylabel(d[4])
+    plt.title(d[2])
+
+#    ax = plt.gca()
+
+
+def draw_flight(draws, output):
+
 
     import matplotlib as mpl
     import matplotlib.dates as mdates
@@ -113,16 +119,20 @@ def draw_flight(x, y, opt_title, opt_xlabel, opt_ylabel, output):
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MultipleLocator, FuncFormatter
 
-    plt.figure(figsize=(20, 10.5))
-    plt.plot(opt_x, opt_y) #拆线图
-#    plt.scatter(opt_x, opt_y) # 点图
-    plt.xlabel(opt_xlabel)
-    plt.ylabel(opt_ylabel)
-    plt.title(opt_title)
-    #plt.ylim()
-    #plt.legend()
+    plt.figure(figsize=(20, 10.5 * len(draws)))
 
-    ax = plt.gca()
+    size = len(draws) * 100 + 11
+
+    plt.subplots_adjust(
+            top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,
+                    wspace=0.35)
+
+    for i, d in enumerate(draws):
+        plt.subplot(size + i)
+        draw_sub(plt, d)
+
+    plt.xlabel(d[3])
+
 #    ax.xaxis.set_major_locator(MultipleLocator(300 * 12))
 #    ax.xaxis.set_major_formatter(FuncFormatter(time_formatter))
 #    ax.xaxis.set_minor_locator( MultipleLocator(300) )
@@ -161,69 +171,68 @@ def get_tcpconn(c):
 #    return conn_sorted
 
 
+def tcp_status(c):
+    flight = []
+    throughtput = {}
+    seqs = []
+    rtt = []
 
-def get_tcpconn_flight(c):
-    data = []
-
-    for tcp_pac in PcapFile(c.infile):
-        con = TcpConn.handle_packet(tcp_pac)
-
-        if tcp_pac.draw_check() and con and con.tmp_win1:
-             win1 = con.tmp_win1
-             data.append([tcp_pac.second, len(win1.inflight)])
-
-    x, y = zip(*data)
-    draw_flight(x, y, 'inflight', 'Time', 'packet', c.args.draw_output)
-
-
-def get_tcpconn_throughput(c):
-    data = {}
-
-    inter = 10 * 1000
-
-    for tcp_pac in PcapFile(c.infile):
-        if tcp_pac.draw_check():
-            s = int(tcp_pac.second / inter) * inter
-            if data.get(s):
-                data[s] = data[s] + 1
-            else:
-                data[s] = 1
-
-
-    x = data.keys()
-    x.sort()
-    y = [data[_] for _ in x]
-
-    draw_flight(x, y, 'throughput', 'Time', 'packet', c.args.draw_output)
-
-
-
-
-
-
-def get_tcpconn_seq(c):
-    data = []
-
-    for tcp_pac in PcapFile(c.infile):
-        if tcp_pac.draw_check():
-             data.append([tcp_pac.second, tcp_pac.seq])
-
-    x, y = zip(*data)
-    draw_flight(x, y, 'seq', 'Time', 'seq', c.args.draw_output)
-
-
-
-def get_tcpconn_rtt(c):
-    data = []
+    inter = 100 * 1000
 
     for tcp_pac in PcapFile(c.infile):
         con = TcpConn.handle_packet(tcp_pac)
 
-        if con and tcp_pac.draw_check():
-             data.append([tcp_pac.second, con.rtt])
+        if not tcp_pac.draw_check():
+            continue
 
-    x, y = zip(*data)
-    draw_flight(x, y, 'rtt', 'Time', 'ms', c.args.draw_output)
+        # seq
+        seqs.append([tcp_pac.second, tcp_pac.seq])
+
+        #throughtput
+        s = int(tcp_pac.second / inter) * inter
+        if throughtput.get(s):
+            throughtput[s] = throughtput[s] + 1
+        else:
+            throughtput[s] = 1
+
+        #rtt
+        if con:
+            rtt.append([tcp_pac.second, con.rtt])
+
+            if con.tmp_win1:
+                 #inflight
+                 win1 = con.tmp_win1
+                 flight.append([tcp_pac.second, len(win1.inflight)])
+
+    draws = []
+
+
+    if c.args.target in ['tcp-seqs', 'tcp-all']:
+        x, y = zip(*seqs)
+        seqs = (x, y, 'seq', 'Time', 'seq')
+        draws.append(seqs)
+
+    if c.args.target in ['tcp-throughtput', 'tcp-all']:
+        x = throughtput.keys()
+        x.sort()
+        y = [throughtput[_] for _ in x]
+
+        thoughtput = (x, y, 'throughput', 'Time', 'packet')
+        draws.append(thoughtput)
+
+    if c.args.target in ['tcp-flight', 'tcp-all']:
+        x, y = zip(*flight)
+        flight = (x, y, 'inflight', 'Time', 'packet')
+        draws.append(flight)
+
+    if c.args.target in ['tcp-rtt', 'tcp-all']:
+        x, y = zip(*rtt)
+        rtt = (x, y, 'rtt', 'Time', 'ms')
+        draws.append(rtt)
+
+    draw_flight(draws, c.args.draw_output)
+
+
 
 
 

@@ -79,8 +79,9 @@ maps = {
         'http': handle_http,
         'info': handle_info,
         'tcp': handle_tcp,
-        'tcp-flight': tcp.get_tcpconn_flight,
-        'tcp-throughput': tcp.get_tcpconn_throughput,
-        'tcp-seq': tcp.get_tcpconn_seq,
-        'tcp-rtt': tcp.get_tcpconn_rtt,
+        'tcp-flight':     tcp.tcp_status,
+        'tcp-throughput': tcp.tcp_status,
+        'tcp-seq':        tcp.tcp_status,
+        'tcp-rtt':        tcp.tcp_status,
+        'tcp-all':        tcp.tcp_status,
         }

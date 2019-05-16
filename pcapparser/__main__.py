@@ -25,6 +25,8 @@ def main():
     handle = handler.maps.get(c.args.target)
     if handle:
         handle(c)
+    else:
+        print("not handle for taget: %s" % c.args.target)
 
 if __name__ == "__main__":
     main()
