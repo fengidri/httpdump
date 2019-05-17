@@ -29,7 +29,7 @@ class TcpWin:
     def handle_fin(self, packet):
         self.fin = True
         self.bytes_sent = packet.seq - self.start_seqs
-        self.time_spent = float(packet.second - self.start_time)/1000
+        self.time_spent = float(packet.second - self.start_time)/1000/1000
 
 
 class TcpConn:
@@ -143,8 +143,8 @@ class TcpConn:
 """ % (
                 con.tuple,
                 win1.retransmit, win2.retransmit,
-                win1.retransmit/len(win1.seqs) * 100,
-                win2.retransmit/len(win2.seqs) * 100,
+                float(win1.retransmit)/len(win1.seqs) * 100,
+                float(win2.retransmit)/len(win2.seqs) * 100,
                 win1.dupack,
                 win2.dupack,
                 win1.num,
