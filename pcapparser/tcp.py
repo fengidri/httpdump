@@ -93,6 +93,20 @@ class TcpConn:
         self.tmp_win1 = win1
         self.tmp_win2 = win2
 
+    def info(self):
+        con = self
+
+        msg = "%s retransmit: %s/%s dupack: %s/%s psh: %s/%s" % (
+                con.tuple,
+                con.win1.retransmit,
+                con.win2.retransmit,
+                con.win1.dupack,
+                con.win2.dupack,
+                con.win1.num,
+                con.win2.num,
+                )
+        return msg
+
 
 
 def draw_sub(plt, d):
@@ -109,9 +123,7 @@ def draw_sub(plt, d):
 #    ax = plt.gca()
 
 
-def draw_flight(draws, output):
-
-
+def draw_flight(info, draws, output):
     import matplotlib as mpl
     import matplotlib.dates as mdates
     mpl.use("Agg")
@@ -127,6 +139,10 @@ def draw_flight(draws, output):
             top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,
                     wspace=0.35)
 
+#    size += 1
+#    plt.subplot(size)
+#    plt.text(0.5, 0.5, info, ha='center', va='center', size=20)
+
     for i, d in enumerate(draws):
         plt.subplot(size + i)
         draw_sub(plt, d)
@@ -138,6 +154,7 @@ def draw_flight(draws, output):
 #    ax.xaxis.set_minor_locator( MultipleLocator(300) )
 #    ax.xaxis.set_major_locator(mdates.MinuteLocator(byminute=[0,30], interval=30))
 
+    plt.suptitle(info, size=30, y=0.95)
     plt.savefig(output)
 
 
@@ -176,6 +193,7 @@ def tcp_status(c):
     throughtput = {}
     seqs = []
     rtt = []
+    cons = []
 
     inter = 100 * 1000
 
@@ -184,6 +202,10 @@ def tcp_status(c):
 
         if not tcp_pac.draw_check():
             continue
+
+        if con and con not in cons:
+            cons.append(con)
+
 
         # seq
         seqs.append([tcp_pac.second, tcp_pac.seq])
@@ -230,7 +252,10 @@ def tcp_status(c):
         rtt = (x, y, 'rtt', 'Time', 'ms')
         draws.append(rtt)
 
-    draw_flight(draws, c.args.draw_output)
+    info = '\n'.join([con.info() for con in cons])
+    draw_flight(info, draws, c.args.draw_output)
+
+
 
 
 

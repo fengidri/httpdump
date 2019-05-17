@@ -13,17 +13,7 @@ import parse_pcap
 
 def handle_tcp(c):
     for con in tcp.get_tcpconn(c):
-        msg = "%s retransmit: %s/%s dupack: %s/%s psh: %s/%s\n" % (
-                con.tuple,
-                con.win1.retransmit,
-                con.win2.retransmit,
-                con.win1.dupack,
-                con.win2.dupack,
-                con.win1.num,
-                con.win2.num,
-                )
-
-        utils.log(msg)
+        utils.log(con.info() + '\n')
 
 def handle_info(c):
     utils.log(parse_pcap.get_infos(c.infile))
