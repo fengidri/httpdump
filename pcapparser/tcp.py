@@ -12,7 +12,7 @@ from packet_parser import PcapFile
 import utils
 
 class TcpWin:
-    def __init__(self):
+    def __init__(self, packet):
         self.inflight = []
         self.fin = False
         self.ack = 0
@@ -21,40 +21,76 @@ class TcpWin:
         self.num = 0
         self.dupack = 0
 
+        self.start_time = packet.second
+        self.start_seqs = packet.seq
+        self.time_spent = -1
+        self.bytes_sent = -1
+
+    def handle_fin(self, packet):
+        self.fin = True
+        self.bytes_sent = packet.seq - self.start_seqs
+        self.time_spent = float(packet.second - self.start_time)/1000
+
 
 class TcpConn:
     cons = {}
     All = []
     def __init__(self, packet):
-        self.win1 = TcpWin()
-        self.win2 = TcpWin()
         self.rtt = 0
         self.All.append(self)
         self.tuple = packet.tuple
         self.src = packet.skey
 
+        self.win1 = TcpWin(packet)
+        self.win2 = None
+
+        self.syn_retrans = 0
+
+
 
     @classmethod
     def handle_packet(cls, packet):
         key = packet.key
-        if packet.syn and not packet.ack:
-            cls.cons[key] = cls(packet)
-            return
-
-        if packet.fin and cls.cons.get(key):
-            del cls.cons[key]
-            return
 
         con = cls.cons.get(key)
         if not con:
-            # TODO
+            if packet.syn and not packet.ack:
+                cls.cons[key] = cls(packet)
             return
+
+        if packet.syn:
+            con.handle_syn(packet)
+            return
+
+        if packet.fin:
+            con.handle_fin(packet)
+            if con.win1.fin and con.win2.fin:
+                del cls.cons[key]
+            return
+
 
         con.tmp_win1 = None
         con.tmp_win2 = None
 
         con.handle(packet)
         return con
+
+    def handle_syn(self, packet):
+        if packet.skey == self.src:
+            self.win1.syn_retrains +=1
+            return
+
+        if self.win2:
+            self.win2.syn_retrains +=1
+            return
+
+        self.win2 = TcpWin(packet)
+
+    def handle_fin(self, packet):
+        if packet.skey == self.src:
+            self.win1.handle_fin(packet)
+        else:
+            self.win2.handle_fin(packet)
 
     def handle(self, packet):
         if packet.skey == self.src:
@@ -95,15 +131,26 @@ class TcpConn:
 
     def info(self):
         con = self
+        win1 = con.win1
+        win2 = con.win2
 
-        msg = "%s retransmit: %s/%s dupack: %s/%s psh: %s/%s" % (
+        msg = \
+"""%s
+   retransmit: %s/%s  %.2f/%.2f
+   dupack:     %s/%s
+   psh:        %s/%s
+   spent:      %.3f/%.3f
+""" % (
                 con.tuple,
-                con.win1.retransmit,
-                con.win2.retransmit,
-                con.win1.dupack,
-                con.win2.dupack,
-                con.win1.num,
-                con.win2.num,
+                win1.retransmit, win2.retransmit,
+                win1.retransmit/len(win1.seqs) * 100,
+                win2.retransmit/len(win2.seqs) * 100,
+                win1.dupack,
+                win2.dupack,
+                win1.num,
+                win2.num,
+                win1.time_spent,
+                win2.time_spent,
                 )
         return msg
 
@@ -124,8 +171,13 @@ def draw_sub(plt, d):
 
 
 def draw_flight(info, draws, output):
+    print ">> start draw"
+
     import matplotlib as mpl
     import matplotlib.dates as mdates
+    from matplotlib import rcParams
+
+    rcParams['font.family'] = 'monospace'
     mpl.use("Agg")
 
     import matplotlib.pyplot as plt
@@ -154,7 +206,7 @@ def draw_flight(info, draws, output):
 #    ax.xaxis.set_minor_locator( MultipleLocator(300) )
 #    ax.xaxis.set_major_locator(mdates.MinuteLocator(byminute=[0,30], interval=30))
 
-    plt.suptitle(info, size=30, y=0.95)
+    plt.suptitle(info, size=30, y=0.98, x=0, ha='left')
     plt.savefig(output)
 
 
