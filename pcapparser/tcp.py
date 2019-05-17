@@ -137,7 +137,7 @@ class TcpConn:
 
         msg = \
 """%s
-   retransmit: %s/%s  %.2f%/%.2f%
+   retransmit: %s/%s  %.2f%%/%.2f%%
    dupack:     %s/%s
    psh:        %s/%s
    spent:      %.3f/%.3f
