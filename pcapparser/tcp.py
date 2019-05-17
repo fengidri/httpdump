@@ -38,6 +38,9 @@ class TcpConn:
     All = []
     def __init__(self, packet):
         self.rtt = 0
+        self.rtt_total = 0
+        self.rtt_num = 0
+
         self.All.append(self)
         self.tuple = packet.tuple
         self.src = packet.skey
@@ -101,19 +104,13 @@ class TcpConn:
             win1 = self.win2
             win2 = self.win1
 
-        if packet.syn:
-            return
-
-        if packet.fin:
-            win1.fin = True
-            return
-
-
         if packet.ack_seq > win2.ack:
             win2.ack = packet.ack_seq
             for p in win2.inflight:
                 if p.seq < win2.ack:
-                    self.rtt = (packet.second - p.second)/1000
+                    self.rtt = float(packet.second - p.second)/999
+                    self.rtt_total += self.rtt
+                    self.rtt_num += 1
                     win2.inflight.remove(p)
 
         if packet.body:
@@ -141,6 +138,7 @@ class TcpConn:
    dupack:     %s/%s
    psh:        %s/%s
    spent:      %.3f/%.3f
+   rtt:        %sms
 """ % (
                 con.tuple,
                 win1.retransmit, win2.retransmit,
@@ -152,6 +150,7 @@ class TcpConn:
                 win2.num,
                 win1.time_spent,
                 win2.time_spent,
+                con.rtt_total / con.rtt_num
                 )
         return msg
 
