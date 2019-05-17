@@ -25,6 +25,7 @@ class TcpWin:
         self.start_seqs = packet.seq
         self.time_spent = -1
         self.bytes_sent = -1
+        self.syn_retrains = 0
 
     def handle_fin(self, packet):
         self.fin = True
@@ -136,7 +137,7 @@ class TcpConn:
 
         msg = \
 """%s
-   retransmit: %s/%s  %.2f/%.2f
+   retransmit: %s/%s  %.2f%/%.2f%
    dupack:     %s/%s
    psh:        %s/%s
    spent:      %.3f/%.3f
